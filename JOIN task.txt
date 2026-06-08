@@ -1,0 +1,44 @@
+--JOIN
+--1:cross join "just for testing"
+SELECT E.SSN, E.FName, D.DeptNum, D.DeptName
+FROM Employee E 
+CROSS JOIN Department D;
+
+--2:INNER JOIN
+SELECT  E.SSN, E.FName, E.LName,P.PName,D.DeptName
+FROM Employee E INNER JOIN Department D
+   ON E.DeptNum = D.DeptNum
+INNER JOIN WorkingHours W
+    ON E.SSN = W.SSN
+INNER JOIN Project P
+    ON W.PNum = P.PNum;
+
+--3:LEFT OUTER JOIN
+SELECT  E.SSN, E.FName, E.LName,D.DeptName, DP.DepName
+FROM Employee E LEFT OUTER JOIN Department D
+   ON E.DeptNum = D.DeptNum
+   LEFT JOIN Dependent DP
+    ON E.SSN = DP.SSN;
+
+--4:RIGHT OUTER JOIN
+SELECT P.PNum, P.PName, E.FName, E.LName,D.DeptName
+FROM Employee E RIGHT OUTER JOIN WorkingHours W
+   ON E.SSN = W.SSN
+  RIGHT OUTER JOIN Project P
+   ON W.PNum = P.PNum
+   LEFT JOIN Department D
+    ON P.DeptNum = D.DeptNum;
+--5:FULL OUTER JOIN
+SELECT E.SSN, E.FName, D.DeptName, D.DeptNum
+FROM Employee E FULL OUTER JOIN Department D
+   ON E.DeptNum = D.DeptNum;
+--6:SELF JOIN
+SELECT E.SSN, 
+       E.FName || ' ' || E.LName AS Employee_Name,
+       S.FName || ' ' || S.LName AS Supervisor_Name,
+       D.DeptName
+FROM Employee E
+LEFT OUTER JOIN Employee S
+    ON E.SuperSSN = S.SSN
+LEFT OUTER JOIN Department D
+    ON E.DeptNum = D.DeptNum;
