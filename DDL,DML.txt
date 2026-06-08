@@ -1,0 +1,234 @@
+CREATE TABLE Employee(
+    SSN NUMBER(9) PRIMARY KEY,
+    FName VARCHAR2(20) NOT NULL,
+    LName VARCHAR2(20) NOT NULL,
+    BD DATE,
+    Gender NUMBER(1) CHECK (gender IN (0,1))
+);
+
+UPDATE Employee SET gender = '0' WHERE gender = 'Female';
+
+ALTER TABLE Employee
+ADD (
+    SuperSSN NUMBER(9),
+    DeptNum NUMBER(9)
+);
+
+ALTER TABLE Employee
+ADD CONSTRAINT emp_supervisor
+FOREIGN KEY (SuperSSN)
+REFERENCES Employee(SSN);
+
+ALTER TABLE Employee
+ADD CONSTRAINT emp_department
+FOREIGN KEY (DeptNum)
+REFERENCES Department(DeptNum);
+--insert values
+INSERT INTO Employee VALUES (101, 'Ali', 'Ahmed', DATE '1990-05-10', 1, NULL, 1);
+INSERT INTO Employee VALUES (102, 'Sara', 'Mohammed', DATE '1992-07-15', 0, 101, 1);
+INSERT INTO Employee VALUES (103, 'Omar', 'Khalid', DATE '1988-03-20', 1, 101, 2);
+INSERT INTO Employee VALUES (104, 'Fatma', 'Salim', DATE '1995-11-25', 0, 103, 3);
+INSERT INTO Employee VALUES (105, 'Hassan', 'Ali', DATE '1991-09-05', 1, 103, 4);
+--clean
+TRUNCATE TABLE Employee;
+--show
+SELECT * FROM Employee;
+
+
+
+
+--*******************Dependent table
+
+CREATE TABLE Dependent(
+    DepName VARCHAR2(20) PRIMARY KEY,
+    BD DATE,
+    Gender NUMBER(1) CHECK (gender IN (0,1))
+);
+
+ALTER TABLE Dependent
+ADD SSN NUMBER(9);
+
+ALTER TABLE Dependent
+ADD CONSTRAINT dependent_emp
+FOREIGN KEY (SSN)
+REFERENCES Employee(SSN);
+
+--insert values for Dependent table
+INSERT INTO Dependent VALUES ('Ahmed', DATE '2015-01-01', 1, 101);
+INSERT INTO Dependent VALUES ('Mona', DATE '2016-02-02', 0, 102);
+INSERT INTO Dependent VALUES ('Yousef', DATE '2017-03-03', 1, 103);
+INSERT INTO Dependent VALUES ('Noor', DATE '2018-04-04', 0, 104);
+INSERT INTO Dependent VALUES ('Salim', DATE '2019-05-05', 1, 105);
+--show
+SELECT * FROM Employee;
+
+
+
+
+--*******************Department table
+CREATE TABLE Department(
+    DeptNum NUMBER(9) PRIMARY KEY,
+    DeptName VARCHAR2(20) NOT NULL
+);
+
+ALTER TABLE Department
+ADD (
+    SSN NUMBER(9),
+    HiringDate DATE
+);
+
+ALTER TABLE Department
+ADD CONSTRAINT dept_manager
+FOREIGN KEY (SSN)
+REFERENCES Employee(SSN);
+--Insert 5 values:
+INSERT INTO Department (DeptNum, DeptName) VALUES (1, 'IT');
+INSERT INTO Department (DeptNum, DeptName) VALUES (2, 'HR');
+INSERT INTO Department (DeptNum, DeptName) VALUES (3, 'Finance');
+INSERT INTO Department (DeptNum, DeptName) VALUES (4, 'Sales');
+INSERT INTO Department (DeptNum, DeptName) VALUES (5, 'Marketing');
+--well just clean table from data
+TRUNCATE TABLE Department;
+--show table
+SELECT * FROM Department;
+
+SELECT DeptNum FROM Department;
+SELECT * FROM Department ORDER BY DeptNum;
+
+UPDATE Department SET SSN = 101, HiringDate = DATE '2020-01-01' WHERE DeptNum = 1;
+UPDATE Department SET SSN = 103, HiringDate = DATE '2021-02-01' WHERE DeptNum = 2;
+UPDATE Department SET SSN = 104, HiringDate = DATE '2022-03-01' WHERE DeptNum = 3;
+UPDATE Department SET SSN = 105, HiringDate = DATE '2023-04-01' WHERE DeptNum = 4;
+UPDATE Department SET SSN = 102, HiringDate = DATE '2024-05-01' WHERE DeptNum = 5;
+
+
+
+
+--*******************Depet_loc table
+CREATE TABLE Depet_loc (
+     Location VARCHAR2(50),
+      DeptNum NUMBER(9),
+    CONSTRAINT depLocation
+        PRIMARY KEY (Location, DeptNum),
+
+    CONSTRAINT deptNumber
+        FOREIGN KEY (DeptNum)
+        REFERENCES Department(DeptNum)
+        ON DELETE CASCADE
+);
+
+--insert values
+INSERT INTO Depet_loc VALUES ('Building A', 1);
+INSERT INTO Depet_loc VALUES ('Building B', 2);
+INSERT INTO Depet_loc VALUES ('Building C', 3);
+INSERT INTO Depet_loc VALUES ('Building D', 4);
+INSERT INTO Depet_loc VALUES ('Building E', 5);
+--show table
+SELECT * FROM Depet_loc;
+
+
+--*******************Project table
+
+CREATE TABLE Project(
+    PNum NUMBER(9) PRIMARY KEY,
+    PName VARCHAR2(20) NOT NULL,
+    Location VARCHAR2(50),
+    City VARCHAR2(30)
+);
+
+ALTER TABLE Project
+ADD DeptNum NUMBER(9);
+
+ALTER TABLE Project
+ADD CONSTRAINT project_department
+FOREIGN KEY (DeptNum)
+REFERENCES Department(DeptNum);
+--insert values
+INSERT INTO Project VALUES (1, 'System', 'Building A', 'Muscat', 1);
+INSERT INTO Project VALUES (2, 'Website', 'Building B', 'Muscat', 2);
+INSERT INTO Project VALUES (3, 'App', 'Building C', 'Sohar', 3);
+INSERT INTO Project VALUES (4, 'Database', 'Building D', 'Nizwa', 4);
+INSERT INTO Project VALUES (5, 'Network', 'Building E', 'Salalah', 5);
+--show table
+SELECT * FROM Project;
+
+
+
+
+--*******************WorkingHours table
+CREATE TABLE WorkingHours (
+    SSN NUMBER(9),
+     CONSTRAINT ssn_emp
+        FOREIGN KEY (SSN)
+        REFERENCES Employee(SSN)
+        ON DELETE CASCADE,
+    PNum NUMBER(9),
+     CONSTRAINT PNum_project
+        FOREIGN KEY (PNum)
+        REFERENCES Project(PNum)
+        ON DELETE CASCADE,
+        Hours NUMBER(5,2),
+    CONSTRAINT pk_workinghours PRIMARY KEY (SSN, PNum)
+);
+--insert values
+INSERT INTO WorkingHours VALUES (101, 1, 40);
+INSERT INTO WorkingHours VALUES (102, 2, 35);
+INSERT INTO WorkingHours VALUES (103, 3, 45);
+INSERT INTO WorkingHours VALUES (104, 4, 30);
+INSERT INTO WorkingHours VALUES (105, 5, 50);
+--show table
+SELECT * FROM WorkingHours;
+--delete
+DELETE FROM WorkingHours WHERE SSN = 105;
+
+-----Aggregate Functions, WHERE, GROUP BY, and HAVING:
+SELECT DeptNum, COUNT(SSN)
+FROM Employee
+GROUP BY DeptNum;
+
+SELECT PNum, SUM(Hours)
+FROM Workinghours
+GROUP BY PNum;
+
+SELECT DeptNum, COUNT(SSN)
+FROM Employee
+WHERE SSN > 102
+GROUP BY DeptNum;
+
+SELECT MAX(SSN),DeptNum
+FROM Employee
+WHERE FName LIKE  'A%'
+GROUP BY DeptNum;
+
+SELECT SSN, COUNT(DeptNum)
+FROM Department
+GROUP BY SSN
+HAVING SSN > 102;
+
+SELECT SSN,  MIN(HiringDate)
+FROM Department
+GROUP BY SSN
+HAVING MIN(HiringDate) > DATE '2020-01-01';
+
+SELECT DeptNum, AVG(PNum)
+FROM Project
+GROUP BY DeptNum
+HAVING AVG(PNum) >= 2;
+
+-------------------------------------------
+Error that's I face it:
+
+1. Foreign Key Dependency Error
+
+When I tried to insert records into the Employee table, I get a foreign key constraint error because the employee records referenced departments that had not been inserted into the Department table yet. To solve this problem, I cleared the employee data and inserted the department records first, then inserted the employee records.
+
+also used "TRUNCATE" to remove all rows.
+
+2. Missing Department Location Data
+
+I forgot to insert records into the Depet_loc table. As a result, when I performed JOIN queries involving department locations, no location data was returned. Fixed that by inserting the missing location records.
+
+3. Missing Foreign Key Constraints
+
+While creating the tables, I forgot to add some foreign key constraints to certain tables. This caused relationships between tables not to be enforced correctly. I solved the problem by using ALTER TABLE statements to add the required foreign key constraints after the tables were created.
+
