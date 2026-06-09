@@ -1,4 +1,4 @@
---task DQL:
+ Task DQL:
 --1. Retrieve the first and last name of all employees along with their gender and birth date
 SELECT FName, LName, Gender, BD
 FROM Employee;
@@ -10,30 +10,29 @@ WHERE DeptNum = 1;
 SELECT PName, Location, City
 FROM Project ;
 --4.Find the employee who manages each department along with their hire date
-SELECT D.DeptName,E.FName,E.LName, D.HiringDate
-FROM Department D, Employee E
-WHERE D.SSN = E.SSN;
---5.Retrieve all dependents associated with a specific employee
-SELECT D.DepName, D.BD
-FROM Dependent D
-WHERE D.SSN = 101;
---6.List all employees who work on a specific project along with their working hours
-SELECT E.FName,E.LName,W.Hours
-FROM Employee E JOIN WorkingHours W
-ON E.SSN = W.SSN
-WHERE W.PNum = 1;
+SELECT DeptName,FName,LName, HiringDate
+FROM Department , Employee 
+WHERE Department.SSN = Employee.SSN;
+--5.Retrieve all dependents associated with a "specific employee"
+SELECT DepName, BD, Gender, SSN
+FROM Dependent 
+WHERE SSN = 101;
+--6.List all employees who work on a "specific project" EX=1, along with their working hours
+SELECT  SSN, Hours
+FROM WorkingHours 
+WHERE PNum = 2;
 --7.Display all departments along with their locations
-SELECT D.DeptName, DL.Location
-FROM Department D, Depet_loc DL
-WHERE D.DeptNum = DL.DeptNum;
+SELECT DeptName, Location
+FROM Department, Depet_loc 
+WHERE Department.DeptNum = Depet_loc.DeptNum;
 --8.Find all employees supervised by a specific employee
-SELECT E.FName,E.LName
-FROM Employee E
-WHERE E.SuperSSN = 101;
+SELECT FName,LName
+FROM Employee 
+WHERE SuperSSN = 101;
 --9.Retrieve all projects assigned to a specific department
 SELECT PName
 FROM Project
-WHERE DeptNum = 2;
+WHERE DeptNum = 3;
 --10.List all female/male dependents along with their birth date
 --famale:
 SELECT DepName,BD
