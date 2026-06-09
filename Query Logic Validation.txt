@@ -1,0 +1,146 @@
+--------------------------------------------
+--shows
+SELECT * FROM EMPLOYEES;
+SELECT * FROM JOBS;
+SELECT * FROM DEPARTMENTS;
+SELECT * FROM COUNTRIES;
+SELECT * FROM JOB_HISTORY;
+SELECT * FROM LOCATIONS;
+SELECT * FROM REGIONS;
+----------------------------------
+
+--Review & Query Logic Validation
+--Query Review 1: WORK
+SELECT e.first_name, e.last_name, d.department_name
+FROM employees e
+JOIN departments d
+ON e.employee_id = d.department_id;
+----
+-Analysis:
+The query executes successfully, but the join condition is logically incorrect.
+
+e.employee_id = d.department_id
+
+compares an employee's unique identifier with a department's identifier. These columns represent different entities and should not be related directly.
+
+The returned rows are likely coincidental matches where employee IDs happen to equal department IDs.
+
+Incorrect business logic:
+Employees should be linked to departments ,column in the employees table that stores the department the employee belongs to.
+
+Improved Query
+SELECT e.first_name,
+       e.last_name,
+       d.department_name
+FROM employees e
+JOIN departments d
+     ON e.department_id = d.department_id;
+
+Is Better:
+Uses the correct foreign-key relationship.
+Returns the actual department assigned to each employee.
+Produces meaningful business data rather than accidental matches.
+------------------------------------------------
+
+--Query Review 2: DOEST WORK
+SELECT e.first_name, e.last_name, j.job_title
+FROM employees e
+JOIN jobs j
+ON e.employee_id = j.job_id;
+-----
+Returned:
+The query failed with:
+ORA-01722: invalid number
+
+Analysis:
+The error occurs because Oracle is attempting to compare incompatible data types, because employee_id is "NUMBER", job_id is "VARCHAR2" so Oracle tries to convert the job code into a number and fails.
+
+Incorrect business logic:
+An employee should be connected to a job through "employees.job_id"
+not through "employees.employee_id"
+
+Improved Query:
+SELECT e.first_name, e.last_name, j.job_title
+FROM employees e
+JOIN jobs j
+ON e.job_id = j.job_id;
+
+Is Better:
+Uses the correct relationship between employees and jobs.
+Eliminates the datatype mismatch.
+Returns each employee with their assigned job title.
+
+----------------------------------------------------
+
+--Query Review 3:  WORK
+SELECT e.first_name, d.department_name
+FROM employees e
+LEFT JOIN departments d
+ON e.department_id = d.department_id
+WHERE d.department_name = 'Sales';
+
+
+Returned Result:
+34 employees were returned, all belonging to Sales.
+
+Analysis:
+The query executes successfully and returns employees in the Sales department. However, there is a logical issue:
+A LEFT JOIN is used, but the WHERE clause filters on:
+
+"d.department_name = 'Sales'"
+
+This removes all rows where the department is NULL, effectively turning the LEFT JOIN into an INNER JOIN.
+
+Partially correct:
+The result is correct if the requirement is: "Show employees who work in Sales." But the LEFT JOIN is unnecessary.
+
+Improved :
+SELECT e.first_name, d.department_name
+FROM employees e
+JOIN departments d
+ON e.department_id = d.department_id
+WHERE d.department_name = 'Sales';
+Is Better:
+If only Sales employees are needed, INNER JOIN is clearer and more efficient.
+Avoids misleading use of LEFT JOIN.
+Better reflects the intended business requirement.
+-------------------------------------------------------------
+
+--Query Review 4:  WORK
+SELECT e.first_name, m.first_name AS manager_name
+FROM employees e
+JOIN employees m
+ON e.employee_id = m.manager_id;
+--------
+This is a self-join on the employees table, e represents employees.
+m represents managers (who are also employees).
+
+The condition:
+e.employee_id = m.manager_id
+means:
+Find employees (e) whose employee ID appears as a manager ID for another employee (m).
+
+Analysis:
+The query executes successfully. However, the join direction is reversed.
+
+Current logic:
+e.employee_id = m.manager_id
+finds managers and the employees who report to them.
+
+Business Logic Check Incorrect: 
+Show each employee and their manager. The aliases and join direction do not match the business meaning.
+
+Improved Query:
+SELECT e.first_name, m.first_name AS manager_name
+FROM employees e
+JOIN employees m
+ON e.manager_id = m.employee_id;
+
+Is Better:
+This follows the actual relationship:
+
+employees.manager_id
+        ↓
+employees.employee_id
+Meaning:
+An employee's manager_id references another employee's employee_id.
