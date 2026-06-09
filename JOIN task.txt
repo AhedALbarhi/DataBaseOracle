@@ -8,18 +8,16 @@ CROSS JOIN Department D;
 SELECT  E.SSN, E.FName, E.LName,P.PName,D.DeptName
 FROM Employee E INNER JOIN Department D
    ON E.DeptNum = D.DeptNum
-INNER JOIN WorkingHours W
-    ON E.SSN = W.SSN
 INNER JOIN Project P
-    ON W.PNum = P.PNum;
+    ON P.DeptNum = D.DeptNum;
 
 --3:LEFT OUTER JOIN
-SELECT  E.SSN, E.FName, E.LName,D.DeptName, DP.DepName
+SELECT  E.SSN, E.FName, E.LName,D.DeptName, DP.DepName, DP.BD, DP.Gender
 FROM Employee E LEFT OUTER JOIN Department D
    ON E.DeptNum = D.DeptNum
    LEFT JOIN Dependent DP
     ON E.SSN = DP.SSN;
-
+    
 --4:RIGHT OUTER JOIN
 SELECT P.PNum, P.PName, E.FName, E.LName,D.DeptName
 FROM Employee E RIGHT OUTER JOIN WorkingHours W
@@ -28,11 +26,8 @@ FROM Employee E RIGHT OUTER JOIN WorkingHours W
    ON W.PNum = P.PNum
    LEFT JOIN Department D
     ON P.DeptNum = D.DeptNum;
---5:FULL OUTER JOIN
-SELECT E.SSN, E.FName, D.DeptName, D.DeptNum
-FROM Employee E FULL OUTER JOIN Department D
-   ON E.DeptNum = D.DeptNum;
---6:SELF JOIN
+
+--5:SELF JOIN
 SELECT E.SSN, 
        E.FName || ' ' || E.LName AS Employee_Name,
        S.FName || ' ' || S.LName AS Supervisor_Name,
