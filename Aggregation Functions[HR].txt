@@ -1,0 +1,78 @@
+--show EMPLOYEES
+SELECT * FROM EMPLOYEES;
+SELECT * FROM JOBS;
+SELECT * FROM DEPARTMENTS;
+
+--COUNT
+--total number of employees
+SELECT COUNT(*) AS total_employees
+FROM EMPLOYEES;
+--total number of departments
+SELECT COUNT(*) AS total_departments
+FROM DEPARTMENTS;
+
+--SUM
+--total salary of all employees
+SELECT SUM(SALARY) AS total_salary
+FROM EMPLOYEES;
+--total commission percentage 
+SELECT SUM(COMMISSION_PCT) AS total_commission_pct
+FROM EMPLOYEES;
+
+--AVG 
+--average salary of all employees
+SELECT AVG(SALARY) AS average_salary
+FROM EMPLOYEES;
+--average minimum and maximum salary  
+SELECT AVG(MIN_SALARY) AS avg_min_salary,
+       AVG(MAX_SALARY) AS avg_max_salary
+FROM JOBS;
+
+--MAX & MIN
+--highest and lowest salary from the EMPLOYEES
+
+SELECT MAX(SALARY) AS highest_salary,
+       MIN(SALARY) AS lowest_salary
+FROM EMPLOYEES;
+
+--highest and lowest salary from the JOBS
+
+SELECT MAX(MAX_SALARY) AS highest_salary,
+       MIN(MIN_SALARY) AS lowest_salary
+FROM JOBS;
+
+
+--GROUP BY 
+--Group employees by department ID
+
+--and display the total number of employees per department
+SELECT DEPARTMENT_ID,
+      COUNT(*) AS num_employees
+FROM EMPLOYEES
+GROUP BY DEPARTMENT_ID;
+
+--Group jobs by job title and show the average min and max salary per job
+
+SELECT  JOB_TITLE,
+AVG(MIN_SALARY) AS avg_min_salary,
+AVG(MAX_SALARY) AS avg_max_salary
+FROM JOBS
+GROUP BY JOB_TITLE
+ORDER BY avg_max_salary;
+
+--HAVING 
+--only departments with more than 5 employees
+
+SELECT DEPARTMENT_ID,
+COUNT(EMPLOYEE_ID)
+FROM EMPLOYEES
+GROUP BY DEPARTMENT_ID
+HAVING COUNT(*) > 5;
+
+-- jobs where the average max salary exceeds a specific value.
+
+SELECT JOB_TITLE,
+AVG(MAX_SALARY)
+FROM JOBS
+GROUP BY JOB_TITLE
+HAVING AVG(MAX_SALARY) > 12000;
