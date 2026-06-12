@@ -1,0 +1,291 @@
+
+-Query Review 1
+
+-Original Query:
+
+SELECT first_name, salary
+FROM employees
+WHERE salary > AVG(salary);
+---
+1. Execute the Query
+error:
+ORA-00934: group function is not allowed here
+
+2. Analyze the Error
+
+The `WHERE` clause filters individual rows before aggregation occurs. However, `AVG(salary)` requires the database to calculate an aggregate value across multiple rows.
+
+3. Is the Business Logic Correct? Yes
+
+-Display employees whose salary is greater than the company's average salary.
+
+The logic is valid, but the SQL implementation is incorrect.
+
+4. Corrected Query
+
+Using a Single-Row (scalar) Subquery
+
+5. Reasoning Behind the Correction
+
+The subquery:
+
+SELECT AVG(salary)
+FROM employees
+
+
+calculates one value (the company-wide average salary).
+
+The outer query then compares each employee's salary against that single value.
+
+6. Subquery Evaluation
+
+Appropriate Subquery Type? Yes. "single-row subquery" is appropriate because `AVG()` returns exactly one value.
+
+7. Does Execution Order Affect the Outcome? Yes.
+
+The original query fails because `WHERE` executes before aggregation.
+
+The corrected query works because the subquery is evaluated first, producing a single value that the outer query can use for comparison.
+
+-Improved Query:
+
+SELECT first_name, salary
+FROM employees
+WHERE salary >
+      (SELECT AVG(salary)
+       FROM employees);
+
+------------------------
+Query Review 2
+
+Original Query
+
+SELECT department_name
+FROM departments
+WHERE department_id = (SELECT department_id FROM employees);
+---
+1. Execute the Query
+Result:
+
+The subquery:
+
+SELECT department_id
+FROM employees
+
+returns "multiple rows" because many employees belong to different departments.
+
+Typical error:
+Single-row subquery returns more than one row
+
+---
+2. Analyze the Error
+
+The outer query uses the operator: " = " this expects one value from the subquery.
+
+3. Is the Business Logic Correct? Incomplete.
+
+---
+5. Reasoning Behind the Correction
+
+The subquery returns " multiple department IDs ", so a multi-row operator is required, by using "IN".
+
+---
+6. Subquery Evaluation
+- Appropriate Subquery Type? No.
+
+7. Single-Row or Multi-Row Result?
+
+Subquery:
+
+SELECT department_id
+FROM employees
+
+returns multiple rows.
+
+Outer query expects one row.
+
+8. Do Comparison Operators Match the Result Set? No.
+
+Original:
+department_id = (subquery) expects one value.
+
+Correct:
+department_id IN (subquery) handles multiple values.
+
+---
+9. Does Execution Order Affect the Outcome? Yes.
+
+The subquery executes first and produces multiple department IDs. The outer query then attempts the comparison. Because `=` expects a single value, the database raises an error when it receives multiple rows.
+---
+Improved Query:
+
+SELECT department_name
+FROM departments
+WHERE department_id IN (
+    SELECT DISTINCT department_id
+    FROM employees
+
+This correctly returns all departments that currently have at least one employee.
+--------------------------------------------------------------------------------------------------
+Query Review 3
+
+Original Query
+
+SELECT *
+FROM employees
+WHERE department_id IN (
+    SELECT salary
+    FROM employees
+);
+
+---
+1. Execute the Query
+
+Most databases will allow the query if `department_id` and `salary` are compatible numeric data types. However, the results will likely be meaningless because department IDs are being compared to salary values.
+
+In some databases, a data type mismatch could produce an error if the columns are incompatible.
+
+---
+
+2. Analyze the Output
+
+The query 
+ "Return employees whose department ID appears in the list of employee salaries."
+
+---
+-improved query:
+Find employees whose salary matches a salary earned by another employee
+
+SELECT *
+FROM employees
+WHERE salary IN (
+    SELECT salary
+    FROM employees
+);
+
+
+This is logically consistent because salary is compared to salary.
+
+. Reasoning Behind the Correction
+
+A subquery should return values that are meaningful for the outer query's comparison.
+
+
+
+Evaluation Item:                             
+Appropriate subquery type used?      Yes (multi-row subquery)                               
+Single-row/multi-row handling correct?   Yes                                                    
+Comparison operator appropriate?      Yes (`IN`)                                             
+Compared columns logically related?    No                                                     
+Execution order affects outcome?       Yes                                                    
+Business requirement implemented correctly?  No                                                     
+Runtime error present?                      Usually no, but possible with incompatible data types 
+-----------------------------------------------------------------------------------------------------------------
+Query Review 4
+
+Original Query:
+
+
+SELECT first_name
+FROM employees
+WHERE salary > (
+    SELECT salary
+    FROM employees
+    WHERE department_id = 90
+);
+---
+1. Execute the Query
+
+The subquery:
+SELECT salary
+FROM employees
+WHERE department_id = 90;
+
+will typically return "multiple salaries" because department 90 usually has more than one employee.
+
+The outer query uses:
+salary > (subquery)
+
+
+The `>` operator expects "a single value", but the subquery returns multiple rows.
+
+Typical error:
+Single-row subquery returns more than one row
+---
+2. Analyze the Error
+
+There is a mismatch between:
+
+Subquery result: Multi-row "subquery multi-value"
+Comparison operator: Single-value operator (`>`) "single subquery"
+
+SQL does not know which salary from department 90 should be used for the comparison.
+
+---
+3. Is the Business Logic Correct? Not at all.
+---
+
+4.improved Queries:
+
+More Than Every Salary in Department 90
+
+SELECT first_name
+FROM employees
+WHERE salary > ALL (
+    SELECT salary
+    FROM employees
+    WHERE department_id = 90
+);
+---
+5. Reasoning Behind the Correction
+
+The original query assumes:
+
+SELECT salary
+FROM employees
+WHERE department_id = 90
+
+
+returns one row. In reality, it usually returns many rows.
+
+Therefore you must either:
+* Use a multi-row operator (`ANY`, `ALL`, `IN` where appropriate), or
+* Reduce the result to a single value using an aggregate such as `MAX()`, `MIN()`, or `AVG()`.
+
+--- 
+Appropriate subquery type used?             No                                             
+Single-row/multi-row handling correct?      No                                               
+Comparison operator appropriate?            No                                               
+Execution order affects outcome?            Yes                                              
+Business requirement implemented correctly? No                                               
+Runtime error present?                      Yes (if multiple employees are in department 90) 
+
+--------------
+1. Why subqueries are useful in enterprise HR reporting systems
+
+Subqueries allow you to retrieve data that depends on the results of another query. In HR systems, they are useful for tasks such as finding employees who earn above the company average salary, identifying departments with the highest headcount, or filtering employees based on conditions derived from other tables. They help break complex reporting requirements into smaller, logical steps.
+
+2. The difference between JOIN-based thinking and subquery-based thinking
+
+" JOIN-based thinking " focuses on combining rows from multiple tables into a single result set. It answers questions like, "What information can I bring together from related tables?"
+"Subquery-based thinking " focuses on using the result of one query as input to another. It answers questions like, "What value or set of values do I need before I can filter or calculate the final result?"
+
+In many cases, the same problem can be solved using either approach, but they represent different ways of reasoning about data.
+
+3. Why some subqueries produce runtime errors
+
+Subqueries can fail when their output does not match what the outer query expects. Common causes include:
+
+* A subquery returns multiple rows when only one value is expected.
+* Data type mismatches between the subquery result and the comparison being made.
+* Invalid references to columns or aliases.
+* Database constraints or permissions preventing access to required data.
+
+4. Why SQL execution order is important
+
+SQL statements are written in one order but processed in another. Understanding execution order helps explain why certain expressions, aliases, or filters work—or fail. For example, the database typically processes `FROM` and `WHERE` before `SELECT`, which affects when data is available for filtering and calculation. Knowing the execution sequence makes debugging and query optimization much easier.
+
+5. Why understanding query logic is more valuable than memorizing syntax
+
+Syntax can be looked up quickly, but logical thinking enables you to solve new and complex problems. When you understand how data is related, how filtering works, and how queries are executed, you can write effective SQL even if you do not remember every command perfectly. Strong query logic also helps with troubleshooting, performance tuning, and adapting to different database systems.
+--------------------------------------------------------------------------------------------------------------
