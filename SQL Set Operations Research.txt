@@ -84,6 +84,21 @@ FROM departments;
 
 
 Result: All department IDs, including duplicates.
+
+Practical Example (HR Schema)
+
+Suppose we want a list of all department IDs that either have employees or are listed in the departments table.
+
+SELECT department_id
+FROM employees
+
+UNION
+
+SELECT department_id
+FROM departments;
+Result
+
+Returns a unique list of department IDs from both tables.
 ---
 
 2. INTERSECT
@@ -122,6 +137,20 @@ Rules & Conditions:
 3. Duplicate rows are removed.
 4. Only rows present in both queries are returned.
 
+Practical Example (HR Schema)
+
+Find department IDs that exist in both the Employees and Departments tables.
+
+SELECT department_id
+FROM employees
+
+INTERSECT
+
+SELECT department_id
+FROM departments;
+Result
+
+Returns department IDs that have employees and also exist in the departments table.
 ---
 
 3. EXCEPT (MINUS in Oracle)
@@ -173,3 +202,12 @@ Rules & Conditions:
 3. Duplicate rows are removed.
 4. Only rows from the first query that do not exist in the second query are returned.
 
+Practical Example (HR Schema)
+
+Find department IDs that exist in the Departments table but have no employees assigned.
+SELECT department_id
+FROM departments
+
+MINUS
+SELECT department_id
+FROM employees;
