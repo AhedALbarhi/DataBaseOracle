@@ -1,0 +1,88 @@
+1. Why subqueries are useful in enterprise HR reporting systems
+
+Subqueries allow you to retrieve data that depends on the results of another query. In HR systems, they are useful for tasks such as finding employees who earn above the company average salary, identifying departments with the highest headcount, or filtering employees based on conditions derived from other tables. They help break complex reporting requirements into smaller, logical steps.
+
+2. The difference between JOIN-based thinking and subquery-based thinking
+
+" JOIN-based thinking " focuses on combining rows from multiple tables into a single result set. It answers questions like, "What information can I bring together from related tables?"
+"Subquery-based thinking " focuses on using the result of one query as input to another. It answers questions like, "What value or set of values do I need before I can filter or calculate the final result?"
+
+In many cases, the same problem can be solved using either approach, but they represent different ways of reasoning about data.
+
+3. Why some subqueries produce runtime errors
+
+Subqueries can fail when their output does not match what the outer query expects. Common causes include:
+
+* A subquery returns multiple rows when only one value is expected.
+* Data type mismatches between the subquery result and the comparison being made.
+* Invalid references to columns or aliases.
+* Database constraints or permissions preventing access to required data.
+
+4. Why SQL execution order is important
+
+SQL statements are written in one order but processed in another. Understanding execution order helps explain why certain expressions, aliases, or filters work—or fail. For example, the database typically processes `FROM` and `WHERE` before `SELECT`, which affects when data is available for filtering and calculation. Knowing the execution sequence makes debugging and query optimization much easier.
+
+5. Why understanding query logic is more valuable than memorizing syntax
+
+Syntax can be looked up quickly, but logical thinking enables you to solve new and complex problems. When you understand how data is related, how filtering works, and how queries are executed, you can write effective SQL even if you do not remember every command perfectly. Strong query logic also helps with troubleshooting, performance tuning, and adapting to different database systems.
+--------------------------------------------------------------------------------------------------------------
+A subquery in SQL is a query nested inside another SQL query. It allows complex filtering, aggregation and data manipulation by using the result of one query inside another. Work when we need to perform operations like:
+
+Filter rows based on results from another query.
+Apply aggregate functions like SUM, COUNT, or AVG dynamically.
+Update data using values from other tables.
+Delete rows based on conditions returned by another query.
+
+SQL Clauses for Subqueries
+Clauses that can be used with subqueries are:
+
+Filters rows in the outer query based on the results returned by the WHERE clause.
+Treats the subquery as a temporary (derived) table that can be queried like a normal table using the FROM clause.
+Filters grouped or aggregated results using values produced by the HAVING clause.
+------------------------------------------------------------------------------------------------------
+Types of Subqueries:
+--------------------
+1. Single-Row Subquery(called a scalar subquery)
+A single-row subquery is a subquery that returns only one value.
+
+Returns exactly one row as the result.
+Commonly used with comparison operators such as =, >, <
+Example:
+
+SELECT * FROM Employees
+WHERE Salary = (SELECT MAX(Salary) FROM Employees);
+
+business logic:
+-from subquery start from table employee, select the highest salary.
+-from outer query, the employees thats have salary = to this highest salary from subquery.
+--------------------------------------------------------------------------------------
+2. Multi-Row Subquery
+A multi-row subquery is a subquery that returns more than one value.
+
+Returns multiple rows as the result.
+Requires operators that can handle multiple values, such as IN, ANY or ALL
+Example:
+
+SELECT * FROM Employees
+WHERE DepartmentID IN (SELECT DepartmentID FROM Departments WHERE Location = 'New York');
+
+business logic:
+-from subquery start from table Department, all Departments that's locate in New York.
+-from outer query, return employees that's belong to any of this Departments from subquery.
+---------------------------------------------------------------------------------------
+3. Correlated Subquery
+A correlated subquery is a subquery that depends on the outer query for its values.
+
+A dependent subquery: it references columns from the outer query.
+Executed once for each row of the outer query, making it slower for large datasets.
+Example:
+
+SELECT e.Name, e.Salary
+FROM Employees e
+WHERE e.Salary > (SELECT AVG(Salary) 
+FROM Employees 
+WHERE DepartmentID = e.DepartmentID);
+
+business logic:
+-sub: Calculates the average salary within each employee's department.
+- outer: Returns employees whose salary is higher than their department’s average.
