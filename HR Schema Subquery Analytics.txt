@@ -1,0 +1,186 @@
+--HR Schema Subquery Analytics & Business Reporting
+--1.Salary Analysis Using Subqueries
+--A.Employees earning more than the company average salary."scalar subquery"
+SELECT employee_id AS "Employee ID", first_name || ' ' || last_name AS "Full Name", salary AS "Salary"
+FROM employees
+WHERE  salary > (SELECT AVG(salary) FROM employees);
+--B.Employees earning less than the company's highest salary."scalar subquery"
+SELECT employee_id AS "Employee ID", first_name || ' ' || last_name AS "Full Name", salary AS "Salary"
+FROM employees
+WHERE  salary < (SELECT MAX(salary) FROM employees);
+--C.Departments whose average salary exceeds the company average salary.
+SELECT department_id AS "Dept ID", AVG(salary) AS "Dept Avq Salary"
+FROM employees
+GROUP BY department_id
+HAVING AVG (salary) > (SELECT AVG(salary) FROM employees);
+--D.Employees earning the highest salary within their department.
+SELECT employee_id AS "Employee ID", first_name || ' ' || last_name AS "Full Name", salary AS "Salary",
+department_id AS "Dept ID"
+FROM employees e
+WHERE  salary = (SELECT MAX(salary) FROM employees 
+                  WHERE department_id = e.department_id);
+--2.Department & Location Analysis
+--A.Employees working in departments located in the United States.
+SELECT employee_id AS "Employee ID",first_name || ' ' || last_name AS "Full Name" 
+FROM employees 
+WHERE department_id IN (
+SELECT department_id
+FROM departments
+WHERE location_id IN (SELECT location_id
+FROM LOCATIONS
+WHERE country_id = 'US'));
+--B.Departments that currently contain employees.
+SELECT department_id AS "Dept ID",department_name AS "Department" 
+FROM departments 
+WHERE department_id IN (
+SELECT DISTINCT department_id
+FROM employees
+WHERE department_id IS NOT NULL);
+--C.Departments that currently have no employees.
+SELECT department_id AS "Dept ID",department_name AS "Department" 
+FROM departments 
+WHERE department_id NOT IN (
+SELECT DISTINCT department_id
+FROM employees
+WHERE department_id IS NOT NULL);
+--Employees working in departments located in the Europe region using nested subqueries.
+SELECT employee_id AS "Employee ID",first_name || ' ' || last_name AS "Full Name"
+FROM   employees
+WHERE  department_id IN (
+           SELECT department_id
+           FROM   departments
+           WHERE  location_id IN (
+                      SELECT location_id
+                      FROM   locations
+                      WHERE  country_id IN (
+                                 SELECT country_id
+                                 FROM   countries
+                                 WHERE  region_id = (
+                                            SELECT region_id
+                                            FROM   regions
+                                            WHERE  region_name = 'Europe'
+                                        )
+                             )
+                  )
+       );
+--3. Manager & Hierarchy Analysis:
+--A.Employees earning more than their manager.
+SELECT employee_id AS "Employee ID",first_name || ' ' || last_name AS "Full Name", salary AS "Salary"
+FROM employees e 
+WHERE salary > (SELECT salary 
+FROM employees
+WHERE employee_id = e.manager_id);
+--B.Managers supervising at least one employee earning more than 10,000.
+SELECT employee_id AS "Employee ID",first_name || ' ' || last_name AS "Full Name"
+FROM employees 
+WHERE employee_id IN (SELECT manager_id 
+FROM employees
+WHERE salary > 10000 AND manager_id IS NOT NULL);
+--C.Employees whose manager works in the same department "corelated subquery"
+SELECT employee_id AS "Employee ID",first_name || ' ' || last_name AS "Full Name", department_id AS "Dept ID"
+FROM employees e
+WHERE department_id = (SELECT department_id 
+FROM employees
+WHERE employee_id = e.manager_id);
+--D.Employees whose manager works in a different department."corelated subquery"
+SELECT employee_id AS "Employee ID",first_name || ' ' || last_name AS "Full Name", department_id AS "Dept ID"
+FROM employees e
+WHERE department_id <> (SELECT department_id 
+FROM employees
+WHERE employee_id = e.manager_id);
+--4.Inline View & Query Execution:
+--A.Filtering employees earning more than 10,000.
+SELECT employee_id AS "Employee ID",first_name || ' ' || last_name AS "Full Name", salary AS "Salary"
+FROM employees  
+WHERE salary > 10000;
+--B.Displaying departments with average salary greater than 9,000.
+SELECT department_id AS "Dept ID",avg_salary AS "avg Salary"
+FROM (SELECT department_id , AVG(salary) AS avg_salary
+FROM employees  
+GROUP BY department_id)
+WHERE avg_salary > 9000;
+--C.Displaying departments with more than five employees.
+SELECT department_id AS "Dept ID"
+FROM employees e
+WHERE (SELECT COUNT(*)
+       FROM employees
+       WHERE department_id = e.department_id) > 5
+GROUP BY department_id;
+--5. Advanced Subquery Logic:
+--A.Employees earning above their department average salary.
+SELECT employee_id AS "Employee ID",first_name || ' ' || last_name AS "Full Name", salary AS "Salary", department_id AS "Dept ID"
+FROM employees e
+WHERE salary > (SELECT AVG (Salary)
+FROM employees
+WHERE department_id = e.department_id);
+--B.Employees earning above the average salary for their job role."corelated subquery"
+SELECT employee_id AS "Employee ID",first_name || ' ' || last_name AS "Full Name", salary AS "Salary", job_id AS "Job"
+FROM employees e
+WHERE salary > (SELECT AVG (Salary)
+FROM employees
+WHERE job_id = e.job_id);
+--C.Departments where all employees earn more than 5,000."Multi-row subquery"
+SELECT department_id AS "Dept ID"
+FROM departments
+WHERE department_id NOT IN(SELECT department_id 
+FROM employees
+WHERE salary <= 5000
+AND department_id IS NOT NULL)
+AND department_id IN (
+SELECT department_id 
+FROM employees);
+--D.Employees who are the only employee in their department.
+SELECT employee_id AS "Employee ID",first_name || ' ' || last_name AS "Full Name", salary AS "Salary", department_id AS "Dept ID"
+FROM employees e
+WHERE (SELECT COUNT(*)
+FROM employees
+WHERE department_id = e.department_id) = 1;
+--6. Executive HR Analytics Challenge:
+--A.Employees earning above the company average salary.
+SELECT employee_id AS "Employee ID",first_name || ' ' || last_name AS "Full Name", salary AS "Salary"
+FROM employees
+WHERE salary > (SELECT AVG (Salary)FROM employees);
+--B.Departments with more employees than Department 50."Scalar Subquery"
+SELECT department_id,
+       COUNT(*) AS employee_count
+FROM employees
+GROUP BY department_id
+HAVING COUNT(*) > (
+    SELECT COUNT(*)
+    FROM employees
+    WHERE department_id = 50
+);
+--C.Employees working in the department with the highest average salary.
+SELECT employee_id AS "Employee ID",
+       first_name || ' ' || last_name AS "Full Name",
+       department_id
+FROM employees
+WHERE department_id = (
+    SELECT department_id
+    FROM employees
+    GROUP BY department_id
+    HAVING AVG(salary) = (
+        SELECT MAX(avg_salary)
+        FROM (
+            SELECT AVG(salary) AS avg_salary
+            FROM employees
+            GROUP BY department_id
+        )
+    )
+);
+--D.Employees earning the second-highest salary.
+SELECT employee_id AS "Employee ID",first_name || ' ' || last_name AS "Full Name", salary AS "Salary"
+FROM employees
+WHERE salary = (SELECT MAX(salary)
+FROM employees
+WHERE salary < (SELECT MAX(salary)
+FROM employees));
+--E.Managers whose employees' average salary exceeds 10,000.
+SELECT employee_id AS "Manager ID", first_name || ' ' || last_name AS "Manager Name"
+FROM employees
+WHERE employee_id IN(
+SELECT manager_id
+FROM employees
+WHERE manager_id IS NOT NULL
+GROUP BY manager_id
+HAVING AVG(salary) > 10000);
