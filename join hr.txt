@@ -1,0 +1,127 @@
+--join
+--Section 2: Employee & Department Reports
+--Query 1 — Employee ID, Full Name, and Department Name
+SELECT e.employee_id AS "Employee ID", e.first_name || ' ' || e.last_name AS "Full Name",
+d.department_name AS "Department"
+FROM employees e JOIN departments d 
+ON e.department_id = d.department_id;
+
+--Query 2 — Full Name, Job Title, and Salary
+SELECT e.first_name || ' ' || e.last_name AS "Full Name", j.job_title AS "Job Title",
+e.salary    AS "Salary"
+FROM   employees e JOIN jobs j 
+ON e.job_id = j.job_id;
+
+--Query 3 — Employee, Department, and City
+SELECT e.first_name || ' ' || e.last_name AS "Full Name",d.department_name AS "Department",
+l.city AS "City"
+FROM employees e JOIN departments d 
+ON e.department_id = d.department_id
+JOIN locations l 
+ON d.location_id = l.location_id;
+
+--Query 4 — Employee, Department, Country, and Region
+SELECT e.first_name || ' ' || e.last_name AS "Full Name",
+d.department_name AS "Department",c.country_name    AS "Country",r.region_name AS "Region"
+FROM employees e
+JOIN departments d 
+ON e.department_id = d.department_id
+JOIN locations l 
+ON d.location_id = l.location_id
+JOIN countries c 
+ON l.country_id = c.country_id
+JOIN regions r 
+ON c.region_id = r.region_id;
+
+--Section 3: Organization Structure Analysis:
+--Query 1 — Complete employee list including employees without departments.
+SELECT e.employee_id AS "Employee ID", e.first_name || ' ' || e.last_name AS "Full Name",
+d.department_name AS "Department"
+FROM employees e LEFT JOIN departments d 
+ON e.department_id = d.department_id
+ORDER BY e.department_id;
+--Query 2 — Complete department list including departments without employees.
+SELECT  d.department_name AS "Department" ,e.first_name || ' ' || e.last_name AS "Employee"
+FROM departments d LEFT JOIN employees e 
+ON d.department_id = e.department_id
+ORDER BY d.department_name;
+--Query 3 —Departments that currently have no employees assigned.
+SELECT  d.department_id AS "Dept ID" ,d.department_name AS "Department"
+FROM hr.departments d LEFT JOIN hr.employees e 
+ON d.department_id = e.department_id
+WHERE e.employee_id IS NULL;
+
+--Section 4:Management Hierarchy Analysis:
+--Query 1 —  Employee name and direct manager name.
+SELECT  e.first_name || ' ' || e.last_name AS "Employee", m.first_name || ' ' || m.last_name AS "Manger"
+FROM hr.employees e JOIN hr.employees m 
+ON e.manager_id = m.employee_id;
+--Query 2 —  Employees without managers and provide a brief explanation.
+--Who is this employee? When you run this code in the schema,
+--you will only get one result: Steven King (Chairman of the Board or CEO of the company).
+--Business Logic: In any corporate organizational structure, the highest-ranking employee
+--(such as the CEO) has no direct supervisor to whom they report, so their manager field
+--is left blank (NULL).Technical Reason: We used the IS NULL condition because regular comparison operators
+--(like = or <>) cannot check for null values ​​in SQL, and the only way to catch blank (white) cells in your
+--program is to use IS NULL.
+SELECT  e.employee_id AS "Employee ID" ,e.first_name || ' ' || e.last_name AS "Full Name"
+, e.job_id AS "Job"
+FROM employees e 
+WHERE e.manager_id IS NULL;
+
+--Section 5:Advanced Business Analysis:
+--Query 1 — Employees earning more than their managers.
+SELECT  e.first_name || ' ' || e.last_name AS "Employee", m.first_name || ' ' || m.last_name AS "Manger"
+,e.salary  AS "Employee Salary", m.salary  AS "Manger Salary"
+FROM employees e JOIN employees m 
+ON e.manager_id = m.manager_id
+ORDER BY e.salary DESC;
+--Query 2 — Departments where the department manager works within the same department.
+SELECT  d.department_name AS "Department", m.first_name || ' ' || m.last_name AS "Manger"
+FROM departments d JOIN employees m 
+ON d.manager_id = m.employee_id AND d.department_id = m.department_id
+ORDER BY d.department_name;
+
+--Section 6:Executive Dashboard Reports:
+--Query 1 — Employee, job title, department, city, and country.
+SELECT e.first_name || ' ' || e.last_name AS "Full Name",
+l.city AS "City", c.country_name AS "Country", j.job_title AS "Job Title"
+FROM employees e  JOIN jobs j 
+ON e.job_id  = j.job_id 
+JOIN departments d ON e.department_id  = e.department_id 
+JOIN locations l ON d.location_id =  l.location_id
+JOIN countries c ON l.country_id =  c.country_id
+ORDER BY   d.department_name , c.country_name;
+--Query 2 — Department, manager, city, and country (including departments without managers).
+SELECT d.department_name AS "Department", m.first_name || ' ' || m.last_name AS "Manager",
+l.city AS "City", c.country_name AS "Country"
+FROM departments d LEFT JOIN employees m 
+ON d.manager_id  = m.employee_id
+JOIN locations l ON d.location_id =  l.location_id
+JOIN countries c ON l.country_id =  c.country_id
+ORDER BY   c.country_name , d.department_name;
+--Query 3 — Employees working in the same department as their manager.
+SELECT d.department_name AS "Department", m.first_name || ' ' || m.last_name AS "Manager",
+e.first_name || ' ' || e.last_name AS "Employee"
+FROM employees e  JOIN employees m 
+ON e.manager_id  = m.employee_id
+JOIN departments d  ON e.department_id = d.department_id
+WHERE e.department_id = m.department_id
+ORDER BY d.department_name;
+--Query 4 — Employees whose managers work in different departments.
+SELECT ed.department_name AS "Employee Dept" , e.first_name || ' ' || e.last_name AS "Employee",
+m.first_name || ' ' || m.last_name AS "Manager", md.department_name AS "Manager Dept"
+FROM employees e  JOIN employees m 
+ON e.manager_id  = m.employee_id
+JOIN departments ed  ON e.department_id = ed.department_id
+JOIN departments md  ON e.department_id = md.department_id
+WHERE e.department_id <> m.department_id
+ORDER BY ed.department_name;
+--Query 5 — Distinct countries containing company departments.
+SELECT DISTINCT r.region_name AS "Region", c.country_name AS "Country"
+FROM departments d 
+JOIN locations l ON d.location_id =  l.location_id
+JOIN countries c ON l.country_id =  c.country_id
+JOIN countries c ON l.country_id =  c.country_id
+JOIN regions r ON c.region_id =  r.region_id
+ORDER BY  r.region_name, c.country_name;
