@@ -1,0 +1,327 @@
+--Day 2 – Oracle Implementation 
+--Part 5 – View Implementation
+--Task 1: "basic info about emp"
+CREATE VIEW V_EMPLOYEE AS
+SELECT e.employee_id AS "Employee ID", e.first_name || ' ' || e.last_name AS "Employee Name",
+e.department_id, e.salary
+FROM employees e;
+
+--Task 2:" emp detaild"
+CREATE OR REPLACE VIEW View_E AS
+SELECT e.first_name || ' ' || e.last_name AS "Employee Name", d.department_name AS "Dapratment Name",
+j.job_title, e.salary
+FROM employees e JOIN departments d ON e.department_id = d.department_id
+JOIN jobs j ON e.job_id = j.job_id;
+
+--Task 3:" Display employees earning more than 10000. "
+SELECT *
+FROM View_E
+WHERE salary > 10000
+ORDER BY salary DESC;
+
+--Task 4:
+" Explain: Why would management prefer querying the View instead of querying EMPLOYEES directly? "
+
+The view provides security (salary or personal columns can be excluded for roles that don't need them), simplicity (the three-table join is written once, not repeated everywhere), consistency (all applications see identical column names and filters), and maintainability (a schema change only requires updating the view definition, not every query across every application). Management also sees meaningful names like EMPLOYEE_NAME and DEPARTMENT_NAME rather than raw foreign key IDs.
+----------------------------------------------------------------------
+--Part 6 – Procedure Implementation 
+--Task 5:" Create a Procedure  that accepts"
+--Department ID "pdept_id"
+--displays: Employee Name ,Salary for employees belonging to that department.
+CREATE OR REPLACE PROCEDURE get_emp (
+    pdept_id IN NUMBER,
+    p_result OUT SYS_REFCURSOR
+)
+AS
+BEGIN
+    OPEN p_result FOR
+        SELECT first_name || ' ' || last_name AS emp_name,
+               salary
+        FROM employees
+        WHERE department_id = pdept_id
+        ORDER BY last_name;
+END;
+/
+-- Execute:
+VAR result REFCURSOR;
+EXEC get_emp(50, :result);
+PRINT result;
+
+
+--Task 6:"Modify the Procedure so it only returns emp whose salary is above the department average salary"
+CREATE OR REPLACE PROCEDURE get_AVG_salary (
+    pdept_id IN NUMBER,
+    p_result OUT SYS_REFCURSOR
+)
+AS
+BEGIN
+    OPEN p_result FOR
+        SELECT AVG(salary)
+        INTO avg_salary      
+        FROM employees
+        WHERE department_id = pdept_id
+        ORDER BY last_name;
+END;
+/
+
+
+----Task 7:
+"Explain: Why is a Procedure better than rewriting the query repeatedly? "
+
+One source of truth — fix a bug once and every caller benefits immediately. Reusability — any application, report, or scheduler job calls the same procedure. Security — EXECUTE can be granted without granting SELECT on the underlying tables. Compiled performance — Oracle parses and optimises once, then reuses the cached plan. Parameterisation — one procedure handles every department by accepting a parameter instead of needing one hard-coded query per department.
+
+--Part 7 – Trigger Implementation 
+----Task 8:Create a table: "SALARY_AUDIT containing: Employee ID, Old Salary, New Salary, Update Date
+
+CREATE TABLE SA_AUDIT(
+AUDIT_ID  NUMBER  GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+EMPLOYEE_ID NUMBER NOT NULL,
+OLD_SALARY NUMBER(8,2),
+NEW_SALARY NUMBER(8,2),
+UPDATE_DATE DATE DEFAULT SYSDATE
+);
+ 
+SELECT * FROM SA_AUDIT;
+
+SELECT * FROM S_AUDIT_TRGGER;
+
+
+----Task 9:Create a table: "Create a Trigger that automatically records salary changes."
+CREATE OR REPLACE TRIGGER S_AUDIT_TRGGER
+AFTER UPDATE OF SALARY ON employees
+FOR EACH ROW 
+BEGIN
+    INSERT INTO SA_AUDIT(
+        EMPLOYEE_ID, OLD_SALARY, NEW_SALARY, UPDATE_DATE)
+        VALUES( :OLD.EMPLOYEE_ID, :OLD.SALARY, :NEW.SALARY, USER, SYSDATE);
+        END;
+        /
+        
+----Task 10:Create a table: "Test the Trigger. 
+--Update employee salaries and verify audit records are generated correctly.."
+-- Check the current salary
+SELECT EMPLOYEE_ID, FIRST_NAME, LAST_NAME, SALARY
+FROM   employees
+WHERE  EMPLOYEE_ID = 101;
+
+-- Apply an update
+UPDATE employees
+SET SALARY = SALARY + 500
+WHERE EMPLOYEE_ID = 101;
+
+COMMIT;
+
+-- Verify the audit record was created automatically
+SELECT *
+FROM   SALARY_AUDIT
+WHERE  EMPLOYEE_ID = 101
+ORDER  BY CHANGED_ON DESC;
+
+
+--------------------------------
+--Part 8 – Scheduler Job Design
+--Task 12:
+BEGIN
+    DBMS_SCHEDULER.CREATE_JOB (
+        job_name        => 'NIGHTLY_ABOVE_AVG_SALARY_JOB',
+        job_type        => 'PLSQL_BLOCK',
+        job_action      => 'BEGIN
+            INSERT INTO REPORT_RESULTS
+                (REPORT_DATE, EMPLOYEE_ID, EMPLOYEE_NAME, SALARY, DEPT_AVG)
+            SELECT SYSDATE,
+                   e.EMPLOYEE_ID,
+                   e.FIRST_NAME || '' '' || e.LAST_NAME,
+                   e.SALARY,
+                   dept_avg.AVG_SALARY
+            FROM   EMPLOYEES e
+            JOIN   (SELECT DEPARTMENT_ID, AVG(SALARY) AS AVG_SALARY
+                    FROM   EMPLOYEES
+                    GROUP  BY DEPARTMENT_ID) dept_avg
+                ON e.DEPARTMENT_ID = dept_avg.DEPARTMENT_ID
+            WHERE  e.SALARY > dept_avg.AVG_SALARY;
+            COMMIT;
+        END;',
+        repeat_interval => 'FREQ=DAILY;BYHOUR=20;BYMINUTE=0;BYSECOND=0',
+        enabled         => TRUE,
+        comments        => 'Daily report: employees earning above their department average'
+    );
+END;
+/
+--Task 13:
+BEGIN
+    DBMS_SCHEDULER.CREATE_JOB (
+        job_name        => 'WEEKLY_DEPT_RANKING_JOB',
+        job_type        => 'PLSQL_BLOCK',
+        job_action      => 'BEGIN
+            INSERT INTO DEPT_SALARY_REPORT
+                (REPORT_DATE, DEPARTMENT_NAME, AVG_SALARY, RANKING)
+            SELECT SYSDATE,
+                   d.DEPARTMENT_NAME,
+                   ROUND(AVG(e.SALARY), 2),
+                   RANK() OVER (ORDER BY AVG(e.SALARY) DESC)
+            FROM   EMPLOYEES   e
+            JOIN   DEPARTMENTS d ON e.DEPARTMENT_ID = d.DEPARTMENT_ID
+            GROUP  BY d.DEPARTMENT_NAME;
+            COMMIT;
+        END;',
+        repeat_interval => 'FREQ=WEEKLY;BYDAY=FRI;BYHOUR=16;BYMINUTE=0;BYSECOND=0',
+        enabled         => TRUE,
+        comments        => 'Weekly Friday report: departments ranked by average salary'
+    );
+END;
+--Task 14:
+BEGIN
+    DBMS_SCHEDULER.CREATE_JOB (
+        job_name        => 'MONTHLY_STALE_SALARY_JOB',
+        job_type        => 'PLSQL_BLOCK',
+        job_action      => 'BEGIN
+            INSERT INTO STALE_SALARY_REPORT
+                (REPORT_DATE, EMPLOYEE_ID, EMPLOYEE_NAME, LAST_CHANGE)
+            SELECT SYSDATE,
+                   e.EMPLOYEE_ID,
+                   e.FIRST_NAME || '' '' || e.LAST_NAME,
+                   MAX(sa.CHANGED_ON)
+            FROM   EMPLOYEES    e
+            LEFT   JOIN SALARY_AUDIT sa ON e.EMPLOYEE_ID = sa.EMPLOYEE_ID
+            GROUP  BY e.EMPLOYEE_ID, e.FIRST_NAME, e.LAST_NAME
+            HAVING MAX(sa.CHANGED_ON) < SYSDATE - 180
+                OR MAX(sa.CHANGED_ON) IS NULL;
+            COMMIT;
+        END;',
+        repeat_interval => 'FREQ=MONTHLY;BYMONTHDAY=1;BYHOUR=6;BYMINUTE=0;BYSECOND=0',
+        enabled         => TRUE,
+        comments        => 'Monthly report: employees with no salary update in 6+ months'
+    );
+END;
+/
+-----------------
+--Part 9 – Enterprise Change Request 
+--Change Request 1:
+CREATE OR REPLACE VIEW VW_HR_STAFF AS
+SELECT
+    e.FIRST_NAME || ' ' || e.LAST_NAME  AS EMPLOYEE_NAME,
+    j.JOB_TITLE,
+    d.DEPARTMENT_NAME,
+    l.CITY
+FROM
+    EMPLOYEES    e
+    JOIN DEPARTMENTS d ON e.DEPARTMENT_ID = d.DEPARTMENT_ID
+    JOIN JOBS        j ON e.JOB_ID        = j.JOB_ID
+    JOIN LOCATIONS   l ON d.LOCATION_ID   = l.LOCATION_ID;
+--Change Request 2:
+CREATE OR REPLACE PROCEDURE GET_ABOVE_AVG_SALARY (
+    p_dept_id  IN  NUMBER
+)
+AS
+    v_avg_salary  NUMBER;
+BEGIN
+    SELECT AVG(SALARY)
+    INTO   v_avg_salary
+    FROM   EMPLOYEES
+    WHERE  DEPARTMENT_ID = p_dept_id;
+
+    FOR rec IN (
+        SELECT FIRST_NAME || ' ' || LAST_NAME AS EMP_NAME,
+               SALARY
+        FROM   EMPLOYEES
+        WHERE  DEPARTMENT_ID = p_dept_id
+          AND  SALARY > v_avg_salary
+        ORDER  BY SALARY DESC
+    ) LOOP
+        DBMS_OUTPUT.PUT_LINE(rec.EMP_NAME || ' | ' || rec.SALARY);
+    END LOOP;
+END GET_ABOVE_AVG_SALARY;
+/
+
+SET SERVEROUTPUT ON;
+EXEC GET_ABOVE_AVG_SALARY(50);
+--Change Request 3:
+BEGIN
+    DBMS_SCHEDULER.SET_ATTRIBUTE (
+        name      => 'NIGHTLY_ABOVE_AVG_SALARY_JOB',
+        attribute => 'repeat_interval',
+        value     => 'FREQ=WEEKLY;BYDAY=FRI;BYHOUR=16;BYMINUTE=0;BYSECOND=0'
+    );
+END;
+/
+--Change Request 4:
+
+BEGIN
+    DBMS_SCHEDULER.SET_ATTRIBUTE (
+        name      => 'NIGHTLY_ABOVE_AVG_SALARY_JOB',
+        attribute => 'repeat_interval',
+        value     => 'FREQ=WEEKLY;BYDAY=FRI;BYHOUR=16;BYMINUTE=0;BYSECOND=0'
+    );
+END;
+/
+
+
+--Part 10 – Final Enterprise Challenge:
+
+Requirement: HR users must not access tables directly
+Object: Views
+Implementation: All access via VW_HR_STAFF, VW_MGR_DASHBOARD, VW_FINANCE_SALARY. No SELECT granted on base tables.
+
+Requirement: Salary changes must be audited automatically
+Object: Trigger
+Implementation:SALARY_AUDIT_TRG fires on every qualifying UPDATE unconditionally.
+
+Requirement: Weekly reports generated automatically
+Object: Scheduler Jobs
+Implementation: WEEKLY_DEPT_RANKING_JOB and WEEKLY_ABOVE_AVG_JOB run every Friday at 4 PM.
+
+Requirement: Managers access employee info through controlled access.
+Object: View + Procedure
+Implementation: VW_MGR_DASHBOARD scoped to their department; GET_ABOVE_AVG_SALARY for analysis.
+
+Requirement: Historical salary changes must be stored.
+Object: Trigger + Table
+Implementation: SALARY_AUDIT retains every salary change permanently.
+
+
+
+--Complete Architecture:
+
+╔══════════════════════════════════════════════════════
+║          FINAL HR AUDITING & REPORTING ARCHITECTURE               ║
+╠══════════════════════════════════════════════════════
+║                                                                   ║
+║  ┌──────────┐  ┌──────────┐  ┌──────────┐                        
+║  │ HR Staff │  │ Managers │  │ Finance  │  ← users               ║
+║  └────┬─────┘  └────┬─────┘  └────┬─────┘                        
+║       │              │              │                              ║
+║  ┌────▼─────────┐ ┌──▼──────────┐ ┌▼─────────────┐              
+║  │VW_HR_STAFF   │ │VW_MGR_DASH  │ │VW_FINANCE    │  ← views     ║
+║  │Name,Job,Dept │ │(dept filter)│ │Salary,Dept   │              ║
+║  │City          │ │             │ │              │              ║
+║  └──────────────┘ └─────────────┘ └──────────────┘              
+║              ↓ reads from                                         ║
+║  ┌───────────────────────────────────────────┐                   
+║  │  EMPLOYEES  DEPARTMENTS  JOBS  LOCATIONS  │  ← base tables    ║
+║  └──────────────────┬────────────────────────┘                   
+║                     │                                             ║
+║          ┌──────────┴──────────┐                                 
+║          │ ON UPDATE SALARY    │                                  ║
+║          ▼                     ▼                                  ║
+║  ┌───────────────┐   ┌──────────────────────────────┐           
+║  │ TRIGGER       │   │ PROCEDURES                   │           ║
+║  │ SALARY_AUDIT  │   │ GET_DEPT_EMPLOYEES(id)       │  ← logic  ║
+║  │ _TRG          │   │ GET_ABOVE_AVG_SALARY(id)     │           ║
+║  │               │   │ CALCULATE_BONUS(dept)        │           ║
+║  └──────┬────────┘   └──────────────┬───────────────┘           
+║         │                           │ called by                  ║
+║         ▼                           ▼                            ║
+║  ┌──────────────┐    ┌──────────────────────────────┐           
+║  │ SALARY_AUDIT │    │ SCHEDULER JOBS               │           ║
+║  │ (audit table)│    │ WEEKLY_ABOVE_AVG_JOB (Fri)   │  ← time  ║
+║  │ permanent    │    │ WEEKLY_DEPT_RANKING_JOB (Fri)│           ║
+║  │ history      │    │ MONTHLY_STALE_SALARY_JOB     │           ║
+║  └──────────────┘    └──────────────┬───────────────┘           
+║                                     ▼                            ║
+║                      ┌──────────────────────────┐               
+║                      │ REPORT TABLES            │               ║
+║                      │ REPORT_RESULTS           │               ║
+║                      │ DEPT_SALARY_REPORT       │               ║
+║                      │ STALE_SALARY_REPORT      │               ║
+║                      └──────────────────────────┘               
+╚══════════════════════════════════════════════════

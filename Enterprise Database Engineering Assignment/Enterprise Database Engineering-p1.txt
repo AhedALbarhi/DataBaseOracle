@@ -1,0 +1,187 @@
+DAY 1 — INVESTIGATION & SOLUTION DESIGN
+Part 1 – Research & Understanding:
+
+-VIEWS
+What is a View?
+
+A View stored SQL SELECT statement that behaves like a virtual table. It stores no data — it dynamically retrieves and presents data from underlying base tables every time it is queried.
+
+Why do companies use Views?
+
+To simplify complex multi-table joins into a single, queryable name
+To hide sensitive columns from users who should not see them
+To enforce consistent business logic across all applications
+To decouple applications from the physical table structure
+To make maintenance easier — if a table changes, only the view definition needs updating
+
+Security Benefits:
+
+Views are one of Oracle's primary security tools. You can create a view that excludes the SALARY column entirely, then grant SELECT on the view instead of the table. Users never see what they are not supposed to see. You can also add WHERE clauses to restrict which rows a user sees — this is row-level security. Different roles get different views of the same data.
+
+Table vs View vs Materialized View:
+
+Feature        Table               View                                   Materialized View 
+Stores data     Yes                 No                                    Yes
+Performance     Directread          Re-executes SQL each time             Fast — reads stored snapshot
+Data freshness   Always current       Always current                         Stale until refreshed
+Best use        Persistent storage  Security, simplification               Reporting, heavy aggregations
+
+Enterprise Use Cases:
+
+1-An HR portal view that exposes only name and department, hiding salary entirely
+2-A finance dashboard view that pre-joins EMPLOYEES, DEPARTMENTS, and LOCATIONS
+3-A manager self-service view filtered to show only that manager's department
+-------------------------------------------------
+
+-STORED PROCEDURES
+What is a Stored Procedure?
+
+A Stored Procedure is a named, compiled PL/SQL block saved in the database. It accepts parameters, executes business logic, and can optionally return results. Unlike ad-hoc SQL, it is parsed and compiled once, then reused on every call.
+
+Why do companies use Procedures?
+
+Write once, call from any application, report, or scheduled job
+Oracle caches the execution plan, so performance is better than repeated ad-hoc SQL
+You can grant EXECUTE on a procedure without granting SELECT or DML on tables
+Business rules live in the database, not scattered across ten different applications
+A single procedure can wrap multiple DML statements inside one controlled transaction
+
+Problems Procedures Solve:
+
+Code duplication — one procedure replaces the same logic rewritten in every app
+SQL injection risk — parameterized procedures never concatenate raw user input
+Inconsistent logic drift — when ten apps calculate bonuses differently over time
+Expensive deployments — one database change instead of redeploying multiple applications
+
+Procedure vs Function:
+
+Feature                Procedure                                   Function
+Return value           No direct return (uses OUT parameters)      Must return exactly one value
+Called from            EXEC or a PL/SQL block                      SQL SELECT or PL/SQL expressions
+Side effects           Allowed — can INSERT, UPDATE, DELETE        Restricted in SQL context
+Best use               Business processes, multi-step logic        Calculations, lookups, transformations
+
+Enterprise Use Cases:
+
+1-CALCULATE_ANNUAL_BONUS(p_dept_id) — computes and inserts bonus records for a department
+2-TRANSFER_EMPLOYEE(p_emp_id, p_new_dept) — moves an employee, updates job history, logs audit
+3-_EMPLOYEE(...) — inserts into EMPLOYEES, creates job history, triggers notifications
+---------------------------------------------------------------------------------------------------
+
+-TRIGGERS
+What is a Trigger?
+
+A Trigger is a stored PL/SQL block that Oracle executes automatically in response to a database event — an INSERT, UPDATE, or DELETE on a specified table. Triggers fire without any explicit call. They are bound to the event itself and are invisible to applications.
+
+Why do companies use Triggers?
+
+Automatic auditing — every data change is logged without relying on application code
+Unconditional enforcement — business rules apply regardless of which system touches the data
+Derived data — automatically maintain computed columns or summary tables
+Notification — insert into alert queues when critical values change
+
+BEFORE Trigger vs AFTER Trigger:
+
+Aspect                        BEFORE Trigger                                     AFTER Trigger
+Timing                        Fires before the DML executes                      Fires after the DML executes
+Can modify :NEW values        Yes—can transform data before it is written        No—data is already committed
+Best use                      Validation, setting defaults, data transformation  Auditing, logging, cascaded updates
+
+Risks of Excessive Trigger Usage:
+
+Hidden logic — developers debugging an application cannot see triggers firing silently
+Cascading chains — a trigger that fires another DML can activate more triggers unexpectedly
+Performance degradation — on bulk operations, row-level triggers fire once per row
+Mutating table errors (ORA-04091) — a row-level trigger cannot query the table it fired from
+Testing difficulty — unit testing logic inside triggers is harder than testing application code
+
+Enterprise Use Cases:
+
+1-SALARY_AUDIT_TRG — records old and new salary on every UPDATE to EMPLOYEES
+2-EMPLOYEE_HISTORY_TRG — copies to JOB_HISTORY whenever department or job changes
+3-PREVENT_WEEKEND_DML_TRG — raises an exception if EMPLOYEES is updated on Saturday or Sunday
+----------------------------------------------------------------------------------------------------------------
+
+-SCHEDULER JOBS
+What is a Scheduler Job?
+
+A Scheduler Job (DBMS_SCHEDULER) is a managed task that Oracle executes automatically on a defined time-based schedule. It runs PL/SQL blocks, stored procedures, or external scripts without human intervention — the Oracle equivalent of a cron job, with built-in logging, monitoring, and retry.
+
+Why do companies use Scheduler Jobs?
+
+Batch processes run overnight without staff involvement
+Reports and data refreshes happen at exactly the same time every cycle
+Heavy workloads are deferred to off-peak hours
+Oracle logs every job run, its duration, and any errors automatically
+
+Trigger vs Scheduler Job:
+
+Aspect                      Trigger                                  SchedulerJob
+Activation                  A data event (INSERT/UPDATE/DELETE)      A time-based schedule
+Timing                      Immediate, synchronous                   Deferred, asynchronous
+Best use                    React to individual row-level changes    Process batches at regular intervals
+Transaction                 Runs inside the same transaction as DML  Runs in its own independent transaction
+
+Commonly Automated Processes:
+
+Nightly ETL and data warehouse loads
+Generating and distributing management reports
+Purging old audit records to manage table size
+Refreshing materialized views for reporting performance
+Sending payroll data files to external processors
+
+Enterprise Use Cases:
+
+1-NIGHTLY_SALARY_REPORT_JOB — every day at 8 PM, report employees earning above department average
+2-WEEKLY_DEPT_RANKING_JOB — every Friday at 4 PM, rank departments by average salary
+3-MONTHLY_STALE_SALARY_JOB — first of each month, flag employees with no pay rise in 6 months
+-----------------------------------------------------------------------------------------------------------------
+
+Part 2 – Enterprise Decision Making 
+
+Scenario 1 :
+- type of object used: view
+-reason: because they don't want  HR department to see salary information, because view works like encapsulate the  
+          actual query inside virtual query, for security reasons. 
+------------------
+Scenario 2 :
+- type of object used: Trigger
+-reason: because they want record every updated salary, that's work of the trigger.
+------------------
+Scenario 3 :
+- type of object used: Scheduler Job 
+-reason: because they want to put a time 4:00pm auto at every Friday.
+------------------
+Scenario 4 :
+- type of object used: Procedure
+-reason: they want to calculate annual bounces so its easy to create procedure then calling it.
+------------------
+Scenario 5 :
+- type of object used: Trigger
+-reason: they wants a notification whenever an employee's salary is modified, so can used trigger before/after updated.
+------------------
+Scenario 6 : view
+- type of object used: 
+-reason: because they want dashboard displaying employee information without exposing underlying tables. 
+-------------------------------------------------------------------------------------------------------------------
+
+Part 3 – Architecture Design 
+
+-------------------------------------------------------------------------------------------------------------------
+
+Part 4 – Reflection 
+
+If applications can handle all business logic themselves, why do enterprise systems still place logic inside the database?
+
+because applications come and go, but the database persists.
+Enforcement at the source. A trigger auditing salary changes fires whether the update comes from the Java application, a Python script, a DBA's SQL Developer session, or a bulk data migration tool. Application-level logic is bypassed the moment someone accesses data through any channel other than the approved application. Logic in the database cannot be bypassed.
+
+Performance. A stored procedure is compiled once by Oracle's optimizer. Its execution plan is cached and reused on every call — far more efficient than an application parsing and optimizing the same SQL on each request. Materialized views precompute expensive aggregations once and serve results instantly.
+
+Unconditional auditing. Triggers provide tamper-resistant audit trails. Regulators (SOX, GDPR, PCI-DSS) often require proof that every data change was recorded. A trigger cannot be accidentally disabled by a developer under deadline pressure. Application-level logging can be forgotten, skipped, or not committed.
+
+Consistency across ten systems. When multiple applications — web portal, mobile app, payroll system, HR tool, third-party integration — all need to calculate department bonuses, a single stored procedure ensures they all use identical logic. Without it, logic drifts silently and applications produce subtly different results from the same data.
+
+Resilience from the application layer. Scheduler jobs decouple batch processing from application servers entirely. If the application server goes down on a Friday afternoon, the Oracle Scheduler Job still runs and generates the weekly report. Application-level schedulers stop when the application stops.
+
+Database logic is not a legacy habit. It is the last line of defense for data integrity in any system where more than one consumer touches the data.
